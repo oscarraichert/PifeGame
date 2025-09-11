@@ -10,7 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 //builder.Services.AddEndpointsApiExplorer();
 //builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<GameHub>();
-builder.Services.AddScoped<GameHandler>();
+builder.Services.AddScoped<WebSocketHandler>();
 builder.Services.AddSingleton<GameHub>();
 
 var app = builder.Build();
@@ -28,11 +28,18 @@ app.UseWebSockets();
 
 app.Use(async (context, next) =>
 {
-    if (context.WebSockets.IsWebSocketRequest)
+    if (context.Request.Path == "/ws")
     {
-        using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-        var handler = new WebSocketHandler();
-        await handler.HandleAsync(webSocket);
+        if (context.WebSockets.IsWebSocketRequest)
+        {
+            using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+            var handler = new WebSocketHandler();
+            await handler.HandleAsync(webSocket);
+        }
+        else
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+        }
     }
     else
     {

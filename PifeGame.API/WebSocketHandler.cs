@@ -1,5 +1,8 @@
-﻿using System.Net.WebSockets;
+﻿using PifeGame.Domain;
+using System.Net.WebSockets;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
+using System.Text.Json;
 
 namespace PifeGame.API
 {
@@ -15,17 +18,37 @@ namespace PifeGame.API
 
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
-                    var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    Console.WriteLine($"Received: {message}");
+                    var json = Encoding.UTF8.GetString(buffer, 0, result.Count);
 
-                    var response = Encoding.UTF8.GetBytes($"Echo: {message}");
-                    await socket.SendAsync(new ArraySegment<byte>(response), WebSocketMessageType.Text, true, CancellationToken.None);
+                    try
+                    {
+                        var message = JsonSerializer.Deserialize<SocketMessage>(json);
+
+                        var response = message.MessageType switch
+                        {
+                            MessageType.NewRoom => HandleNewRoom(message.Payload),
+                            _ => new SocketMessage { MessageType = MessageType.InvalidMessageType, Payload = "Invalid Message Type" },
+                        };
+
+                        var responseBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(response));
+                        await socket.SendAsync(new ArraySegment<byte>(responseBytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                    }
+                    catch
+                    {
+                        var error = Encoding.UTF8.GetBytes("Invalid message");
+                        await socket.SendAsync(new ArraySegment<byte>(error), WebSocketMessageType.Text, true, CancellationToken.None);
+                    }
                 }
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {
                     await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by the WebSocketHandler", CancellationToken.None);
                 }
             }
+        }
+
+        public SocketMessage HandleNewRoom(string? payload)
+        {
+            return new SocketMessage { MessageType = MessageType.NewRoom, Payload = "Handle New Room" };
         }
     }
 }
