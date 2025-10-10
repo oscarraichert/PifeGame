@@ -4,9 +4,22 @@ using Microsoft.IdentityModel.Tokens;
 using PifeGame.API;
 using PifeGame.Application;
 using PifeGame.Domain;
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:4200")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        });
+});
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -14,6 +27,8 @@ var builder = WebApplication.CreateBuilder(args);
 //builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<GameHub>();
 builder.Services.AddSingleton<WebSocketHandler>();
+
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 
 builder.Services.AddAuthorization();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -25,14 +40,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER"),
-            ValidAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE"),
+            ValidIssuer = jwtSettings["Issuer"],
+            ValidAudience = jwtSettings["Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("JWT_SECRET")!)),
+                Encoding.UTF8.GetBytes(jwtSettings["Secret"]!))
         };
     });
 
 var app = builder.Build();
+
+app.UseCors("AllowFrontend");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -51,10 +68,40 @@ app.Use(async (context, next) =>
     {
         if (context.WebSockets.IsWebSocketRequest)
         {
-            using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-            var gameHub = context.RequestServices.GetRequiredService<GameHub>();
-            var handler = new WebSocketHandler(gameHub);
-            await handler.HandleAsync(webSocket);
+            var token = context.Request.Query["access_token"].ToString();
+
+            if (string.IsNullOrEmpty(token))
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return;
+            }
+
+            try
+            {
+                var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var key = Encoding.UTF8.GetBytes(jwtSettings["Secret"]!);
+
+                tokenHandler.ValidateToken(token, new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = jwtSettings["Issuer"],
+                    ValidAudience = jwtSettings["Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(key)
+                }, out var validatedToken);
+
+                using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+                var gameHub = context.RequestServices.GetRequiredService<GameHub>();
+                var handler = new WebSocketHandler(gameHub);
+                await handler.HandleAsync(webSocket);
+            }
+            catch (SecurityTokenException)
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            }
         }
         else
         {
@@ -70,11 +117,11 @@ app.Use(async (context, next) =>
 app.MapGet("/deck-test", () =>
 {
     return new Game().Deck;
-});
+}).RequireAuthorization();
 
 app.MapGet("/list-rooms", (GameHub hub) =>
 {
     return hub.ListRooms();
-});
+}).RequireAuthorization();
 
 app.Run();
