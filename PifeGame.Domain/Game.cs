@@ -8,7 +8,7 @@
 
         public Game()
         {
-            Id = new Guid();
+            Id = Guid.NewGuid();
             Deck = InitializeDeck();
             Players = new List<Player>();
         }

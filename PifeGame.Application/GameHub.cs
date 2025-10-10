@@ -10,6 +10,8 @@ namespace PifeGame.Application
         {
             var room = new Game();
 
+            Rooms.Add(room);
+
             return room.Id;
         }
 

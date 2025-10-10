@@ -1,13 +1,22 @@
-﻿using PifeGame.Domain;
+﻿using PifeGame.Application;
+using PifeGame.Domain;
 using System.Net.WebSockets;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace PifeGame.API
 {
     public class WebSocketHandler
     {
+        public GameHub Hub { get; }
+
+        public WebSocketHandler(GameHub hub)
+        {
+            Hub = hub;
+        }
+
         public async Task HandleAsync(WebSocket socket)
         {
             var buffer = new byte[1024 * 4];
@@ -27,6 +36,7 @@ namespace PifeGame.API
                         var response = message.MessageType switch
                         {
                             MessageType.NewRoom => HandleNewRoom(message.Payload),
+                            MessageType.ListRooms => HandleListRooms(),
                             _ => new SocketMessage { MessageType = MessageType.InvalidMessageType, Payload = "Invalid Message Type" },
                         };
 
@@ -48,7 +58,13 @@ namespace PifeGame.API
 
         public SocketMessage HandleNewRoom(string? payload)
         {
-            return new SocketMessage { MessageType = MessageType.NewRoom, Payload = "Handle New Room" };
+            var roomId = Hub.NewRoom();
+            return new SocketMessage { MessageType = MessageType.NewRoom, Payload = $"created room {roomId}" };
+        }
+
+        public SocketMessage HandleListRooms()
+        {
+            return new SocketMessage { MessageType = MessageType.ListRooms, Payload = JsonSerializer.Serialize(Hub.ListRooms()) };
         }
     }
 }
