@@ -23,21 +23,22 @@ namespace PifeGame.API
         {
             var buffer = new byte[1024 * 4];
 
+            var roomId = context.Request.Query["room_id"].ToString();
+
+            if (string.IsNullOrEmpty(roomId))
+            {
+                var response = HandleNewRoom(token, socket);
+
+                var responseBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(response));
+                await socket.SendAsync(new ArraySegment<byte>(responseBytes), WebSocketMessageType.Text, true, CancellationToken.None);
+            }
+            else
+            {
+                await HandleJoinRoom(token, roomId, socket);
+            }
+
             while (socket.State == WebSocketState.Open)
             {
-                var roomId = context.Request.Query["room_id"].ToString();
-
-                if (string.IsNullOrEmpty(roomId))
-                {
-                    var response = HandleNewRoom(token, socket);
-
-                    var responseBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(response));
-                    await socket.SendAsync(new ArraySegment<byte>(responseBytes), WebSocketMessageType.Text, true, CancellationToken.None);
-                }
-                else
-                {
-                    await HandleJoinRoom(token, roomId, socket);
-                }
 
                 var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
 
