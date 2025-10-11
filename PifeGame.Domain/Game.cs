@@ -1,10 +1,15 @@
-﻿namespace PifeGame.Domain
+﻿using System.Collections.Concurrent;
+using System.Net.WebSockets;
+
+namespace PifeGame.Domain
 {
     public class Game
     {
         public Guid Id { get; set; }
         public List<Card> Deck { get; set; }
         public List<Player> Players { get; set; }
+
+        public ConcurrentDictionary<WebSocket, string> Connections = new();
 
         public Game()
         {

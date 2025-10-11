@@ -26,7 +26,7 @@ builder.Services.AddCors(options =>
 //builder.Services.AddEndpointsApiExplorer();
 //builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<GameHub>();
-builder.Services.AddSingleton<WebSocketHandler>();
+builder.Services.AddScoped<WebSocketHandler>();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 
@@ -96,7 +96,7 @@ app.Use(async (context, next) =>
                 using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
                 var gameHub = context.RequestServices.GetRequiredService<GameHub>();
                 var handler = new WebSocketHandler(gameHub);
-                await handler.HandleAsync(webSocket);
+                await handler.HandleAsync(webSocket, token, context);
             }
             catch (SecurityTokenException)
             {
@@ -117,11 +117,8 @@ app.Use(async (context, next) =>
 app.MapGet("/deck-test", () =>
 {
     return new Game().Deck;
-}).RequireAuthorization();
+});
 
-app.MapGet("/list-rooms", (GameHub hub) =>
-{
-    return hub.ListRooms();
-}).RequireAuthorization();
+app.MapEndpoints();
 
 app.Run();

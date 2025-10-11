@@ -2,15 +2,12 @@
 {
     public class Player
     {
-        public Player(Guid id, string nickname, List<Card> hand)
+        public Player(string username)
         {
-            Id = id;
-            Nickname = nickname;
+            Username = username;
             Hand = new List<Card>();
         }
-
-        public Guid Id { get; set; }
-        public string Nickname { get; set; }
+        public string Username { get; set; }
         public List<Card> Hand { get; set; }
     }
 }

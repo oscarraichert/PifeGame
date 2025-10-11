@@ -10,6 +10,7 @@ namespace PifeGame.Domain
     {
         InvalidMessageType = 0,
         NewRoom = 1,
-        ListRooms = 2
+        JoinRoom = 2,
+        ChatMessage = 3,
     }
 }
