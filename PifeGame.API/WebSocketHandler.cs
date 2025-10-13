@@ -64,6 +64,8 @@ namespace PifeGame.API
                 }
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {
+                    var clients = Hub.LeaveRoom(socket);
+
                     await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by the WebSocketHandler", CancellationToken.None);
                 }
             }
@@ -85,7 +87,7 @@ namespace PifeGame.API
 
             if (result.Item1)
             {
-                var message = new SocketMessage { MessageType = MessageType.NewRoom, Payload = $"joined room {roomId}" };
+                var message = new SocketMessage { MessageType = MessageType.NewRoom, Payload = $"{username} joined room" };
                 await WebSocketUtils.Broadcast(message, result.Item2!);
             }
         }

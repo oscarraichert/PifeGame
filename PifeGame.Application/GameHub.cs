@@ -42,6 +42,18 @@ namespace PifeGame.Application
             return (true, room.Connections);
         }
 
+        public async Task LeaveRoom(WebSocket socket)
+        {
+            var room = Rooms.FirstOrDefault(x => x.Connections.Any(x => x.Key == socket));
+
+            room!.Connections.Remove(socket, out var username);
+            room.Players.RemoveAll(x => x.Username == username);
+
+            var message = new SocketMessage { MessageType = MessageType.LeaveRoom, Payload = $"{username} left room" };
+
+            await WebSocketUtils.Broadcast(message, room!.Connections);
+        }
+
         public async Task ChatMessageAsync(SocketMessage message, WebSocket socket)
         {
             var room = Rooms.FirstOrDefault(x => x.Connections.Any(x => x.Key == socket));
