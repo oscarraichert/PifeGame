@@ -27,7 +27,7 @@ namespace PifeGame.API
 
             if (string.IsNullOrEmpty(roomId))
             {
-                var response = HandleNewRoom(token, socket);
+                var response = await HandleNewRoomAsync(token, socket);
 
                 var responseBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(response));
                 await socket.SendAsync(new ArraySegment<byte>(responseBytes), WebSocketMessageType.Text, true, CancellationToken.None);
@@ -71,11 +71,11 @@ namespace PifeGame.API
             }
         }
 
-        public SocketMessage HandleNewRoom(string jwt, WebSocket socket)
+        public async Task<SocketMessage> HandleNewRoomAsync(string jwt, WebSocket socket)
         {
             var username = JwtHelper.GetClaims(jwt).FirstOrDefault(x => x.Type == "username")!.Value;
 
-            var roomId = Hub.NewRoom(username, socket);
+            var roomId = await Hub.NewRoomAsync(username, socket);
             return new SocketMessage { MessageType = MessageType.NewRoom, Payload = $"created room {roomId}" };
         }
 

@@ -8,8 +8,17 @@ namespace PifeGame.Application
     {
         public List<Game> Rooms = new List<Game>();
 
-        public Guid NewRoom(string username, WebSocket socket)
+        public async Task<Guid> NewRoomAsync(string username, WebSocket socket)
         {
+            var currentRoom = Rooms.FirstOrDefault(x => x.Connections.Any(x => x.Value == username));
+
+            if (currentRoom != null)
+            {
+                var connection = GetConnectionByUsername(username);
+
+                await LeaveRoom(connection.Key);
+            }
+
             var room = new Game();
 
             room.Players.Add(new Player(username));
@@ -51,7 +60,17 @@ namespace PifeGame.Application
 
             var message = new SocketMessage { MessageType = MessageType.LeaveRoom, Payload = $"{username} left room" };
 
+            if (room.Players.Count == 0)
+            {
+                Rooms.Remove(room);
+            }
+
             await WebSocketUtils.Broadcast(message, room!.Connections);
+        }
+
+        public KeyValuePair<WebSocket, string> GetConnectionByUsername(string username)
+        {
+            return Rooms.Select(x => x.Connections.FirstOrDefault(x => x.Value == username)).FirstOrDefault();
         }
 
         public async Task ChatMessageAsync(SocketMessage message, WebSocket socket)
@@ -60,9 +79,9 @@ namespace PifeGame.Application
             await WebSocketUtils.Broadcast(message, room!.Connections);
         }
 
-        public List<Game> ListRooms()
+        public List<Guid> ListRooms()
         {
-            return Rooms;
+            return Rooms.Select(x => x.Id).ToList();
         }
     }
 }
