@@ -11,13 +11,20 @@ namespace PifeGame.Application
 
         public async Task NewRoomAsync(WebSocket socket)
         {
+            var connected = Rooms.Any(x => x.Connections.Any(x => x == socket));
+
+            if (connected)
+            {
+                await LeaveRoom(socket);
+            }
+
             var room = new Game();
 
             room.Connections.Add(socket);
 
             Rooms.Add(room);
 
-            var response = new SocketMessage { MessageType = MessageType.NewRoom, Payload = $"created room {room.Id}" };
+            var response = new SocketMessage { MessageType = MessageType.NewRoom, Payload = $"{room.Id}" };
 
             await WebSocketUtils.Send(response, socket);
         }
