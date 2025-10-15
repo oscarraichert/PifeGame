@@ -8,14 +8,8 @@ namespace PifeGame.Application
     public class GameLobbyService
     {
         public List<Game> Rooms = new List<Game>();
-        public ConcurrentBag<WebSocket> Connections { get; set; } = new();
 
-        public void JoinLobby(WebSocket socket)
-        {
-            Connections.Add(socket);
-        }
-
-        public async Task NewRoomAsync(SocketMessage message, WebSocket socket)
+        public async Task NewRoomAsync(WebSocket socket)
         {
             var room = new Game();
 
@@ -28,9 +22,9 @@ namespace PifeGame.Application
             await WebSocketUtils.Send(response, socket);
         }
 
-        public async Task JoinRoom(string username, Guid roomId, WebSocket socket)
+        public async Task JoinRoom(string username, string roomId, WebSocket socket)
         {
-            var room = Rooms.FirstOrDefault(x => x.Id == roomId);
+            var room = Rooms.FirstOrDefault(x => x.Id == Guid.Parse(roomId));
 
             if (room == null)
             {
