@@ -25,7 +25,7 @@ builder.Services.AddCors(options =>
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 //builder.Services.AddEndpointsApiExplorer();
 //builder.Services.AddSwaggerGen();
-builder.Services.AddSingleton<GameHub>();
+builder.Services.AddSingleton<GameLobbyService>();
 builder.Services.AddScoped<WebSocketHandler>();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -93,7 +93,7 @@ app.Use(async (context, next) =>
                 }, out var validatedToken);
 
                 using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-                var gameHub = context.RequestServices.GetRequiredService<GameHub>();
+                var gameHub = context.RequestServices.GetRequiredService<GameLobbyService>();
                 var handler = new WebSocketHandler(gameHub);
                 await handler.HandleAsync(webSocket, token, context);
             }

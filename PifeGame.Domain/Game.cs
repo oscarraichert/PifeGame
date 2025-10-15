@@ -7,15 +7,13 @@ namespace PifeGame.Domain
     {
         public Guid Id { get; set; }
         public List<Card> Deck { get; set; }
-        public List<Player> Players { get; set; }
 
-        public ConcurrentDictionary<WebSocket, string> Connections = new();
+        public ConcurrentBag<WebSocket> Connections = new();
 
         public Game()
         {
             Id = Guid.NewGuid();
             Deck = InitializeDeck();
-            Players = new List<Player>();
         }
 
         static List<Card> InitializeDeck()

@@ -12,34 +12,21 @@ namespace PifeGame.API
 {
     public class WebSocketHandler
     {
-        public GameHub Hub { get; }
+        public GameLobbyService LobbyService { get; }        
 
-        public WebSocketHandler(GameHub hub)
+        public WebSocketHandler(GameLobbyService lobbyService)
         {
-            Hub = hub;
+            LobbyService = lobbyService;
         }
 
         public async Task HandleAsync(WebSocket socket, string token, HttpContext context)
         {
             var buffer = new byte[1024 * 4];
 
-            var roomId = context.Request.Query["room_id"].ToString();
-
-            if (string.IsNullOrEmpty(roomId))
-            {
-                var response = await HandleNewRoomAsync(token, socket);
-
-                var responseBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(response));
-                await socket.SendAsync(new ArraySegment<byte>(responseBytes), WebSocketMessageType.Text, true, CancellationToken.None);
-            }
-            else
-            {
-                await HandleJoinRoom(token, roomId, socket);
-            }
+            LobbyService.JoinLobby(socket);
 
             while (socket.State == WebSocketState.Open)
             {
-
                 var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
 
                 if (result.MessageType == WebSocketMessageType.Text)
@@ -52,7 +39,8 @@ namespace PifeGame.API
 
                         _ = message?.MessageType switch
                         {
-                            MessageType.ChatMessage => Hub.ChatMessageAsync(message, socket),
+                            MessageType.NewRoom => LobbyService.NewRoomAsync(message, socket),
+                            MessageType.ChatMessage => LobbyService.ChatMessageAsync(message, socket),
                             _ => Task.CompletedTask,
                         };
                     }
@@ -64,31 +52,10 @@ namespace PifeGame.API
                 }
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {
-                    var clients = Hub.LeaveRoom(socket);
+                    var clients = LobbyService.LeaveRoom(socket);
 
                     await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by the WebSocketHandler", CancellationToken.None);
                 }
-            }
-        }
-
-        public async Task<SocketMessage> HandleNewRoomAsync(string jwt, WebSocket socket)
-        {
-            var username = JwtHelper.GetClaims(jwt).FirstOrDefault(x => x.Type == "username")!.Value;
-
-            var roomId = await Hub.NewRoomAsync(username, socket);
-            return new SocketMessage { MessageType = MessageType.NewRoom, Payload = $"created room {roomId}" };
-        }
-
-        public async Task HandleJoinRoom(string jwt, string roomId, WebSocket socket)
-        {
-            var username = JwtHelper.GetClaims(jwt).FirstOrDefault(x => x.Type == "username")!.Value;
-
-            var result = Hub.JoinRoom(username, Guid.Parse(roomId), socket);
-
-            if (result.Item1)
-            {
-                var message = new SocketMessage { MessageType = MessageType.NewRoom, Payload = $"{username} joined room" };
-                await WebSocketUtils.Broadcast(message, result.Item2!);
             }
         }
     }

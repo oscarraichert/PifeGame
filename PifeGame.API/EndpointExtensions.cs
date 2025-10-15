@@ -6,7 +6,7 @@ namespace PifeGame.API
     {
         public static void MapEndpoints(this WebApplication app)
         {
-            app.MapGet("/rooms", (GameHub hub) =>
+            app.MapGet("/rooms", (GameLobbyService hub) =>
             {
                 return hub.ListRooms();
             }).RequireAuthorization();
