@@ -7,7 +7,7 @@ namespace PifeGame.Domain
     {
         public Guid Id { get; set; }
         public List<Card> Deck { get; set; }
-        public ConcurrentBag<WebSocket> Connections { get; set; } = new();
+        public ConcurrentDictionary<WebSocket, string> Connections { get; set; } = new();
 
         public Game()
         {

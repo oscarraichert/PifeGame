@@ -12,7 +12,7 @@ namespace PifeGame.API
 {
     public class WebSocketHandler
     {
-        public GameLobbyService LobbyService { get; }        
+        public GameLobbyService LobbyService { get; }
 
         public WebSocketHandler(GameLobbyService lobbyService)
         {
@@ -24,14 +24,14 @@ namespace PifeGame.API
             var buffer = new byte[1024 * 4];
 
             var roomId = context.Request.Query["room_id"].ToString();
+            var username = JwtHelper.GetClaims(token).FirstOrDefault(x => x.Type == "username")!.Value;
 
             if (string.IsNullOrEmpty(roomId))
             {
-                await LobbyService.NewRoomAsync(socket);
+                await LobbyService.NewRoomAsync(socket, username);
             }
             else
             {
-                var username = JwtHelper.GetClaims(token).FirstOrDefault(x => x.Type == "username")!.Value;
                 await LobbyService.JoinRoom(username, roomId, socket);
             }
 

@@ -18,12 +18,12 @@ namespace PifeGame.Application
             await socket.SendAsync(new ArraySegment<byte>(responseBytes), WebSocketMessageType.Text, true, CancellationToken.None);
         }
 
-        public static async Task Broadcast(SocketMessage message, ConcurrentBag<WebSocket> clients)
+        public static async Task Broadcast(SocketMessage message, ConcurrentDictionary<WebSocket, string> clients)
         {
             var responseBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
             var tasks = new List<Task>();
 
-            foreach (var socket in clients)
+            foreach (var socket in clients.Select(x => x.Key))
             {
                 if (socket.State == WebSocketState.Open)
                 {

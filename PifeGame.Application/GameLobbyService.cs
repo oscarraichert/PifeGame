@@ -9,9 +9,9 @@ namespace PifeGame.Application
     {
         public List<Game> Rooms = new List<Game>();
 
-        public async Task NewRoomAsync(WebSocket socket)
+        public async Task NewRoomAsync(WebSocket socket, string username)
         {
-            var connected = Rooms.Any(x => x.Connections.Any(x => x == socket));
+            var connected = Rooms.Any(x => x.Connections.Any(x => x.Key == socket));
 
             if (connected)
             {
@@ -20,7 +20,7 @@ namespace PifeGame.Application
 
             var room = new Game();
 
-            room.Connections.Add(socket);
+            room.Connections.TryAdd(socket, username);
 
             Rooms.Add(room);
 
@@ -38,7 +38,7 @@ namespace PifeGame.Application
                 return;
             }
 
-            room.Connections.Add(socket);
+            room.Connections.TryAdd(socket, username);
 
             var message = new SocketMessage { MessageType = MessageType.JoinRoom, Payload = $"{username} joined room" };
 
@@ -47,26 +47,30 @@ namespace PifeGame.Application
 
         public async Task LeaveRoom(WebSocket socket)
         {
-            var room = Rooms.FirstOrDefault(x => x.Connections.Any(x => x == socket));
+            var room = Rooms.FirstOrDefault(x => x.Connections.Any(x => x.Key == socket));
 
             if (room != null)
             {
-                room!.Connections.TryTake(out var connection);
+                var removed = room!.Connections.Remove(socket, out var username);
 
-                var message = new SocketMessage { MessageType = MessageType.LeaveRoom, Payload = $"{connection} left room" };
-
-                if (room.Connections.Count == 0)
+                if (removed)
                 {
-                    Rooms.Remove(room);
+                    var message = new SocketMessage { MessageType = MessageType.LeaveRoom, Payload = $"{username} left room" };
+
+                    if (room.Connections.Count == 0)
+                    {
+                        Rooms.Remove(room);
+                    }
+
+                    await WebSocketUtils.Broadcast(message, room!.Connections);
                 }
 
-                await WebSocketUtils.Broadcast(message, room!.Connections);
             }
         }
 
         public async Task ChatMessageAsync(SocketMessage message, WebSocket socket)
         {
-            var room = Rooms.FirstOrDefault(x => x.Connections.Any(x => x == socket));
+            var room = Rooms.FirstOrDefault(x => x.Connections.Any(x => x.Key == socket));
             await WebSocketUtils.Broadcast(message, room!.Connections);
         }
 
